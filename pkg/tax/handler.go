@@ -48,7 +48,7 @@ func (h *Handler) Calculation(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, Err{"Wht must be in the range 0 to TotalIncome."})
 	}
 
-	var taxLevels = GetTaxConsts()
+	var tConsts = GetTaxConsts()
 
 	alwTotal := 0.0
 	for _, alw := range ie.Allowances {
@@ -58,27 +58,32 @@ func (h *Handler) Calculation(c echo.Context) error {
 	iNet := ie.TotalIncome - 60000
 	iNet -= alwTotal
 
+	var tLevels []resp.TaxLevel
 	ttax := 0.0
+	for i := 0; i < len(tConsts); i++ {
+		tConst := tConsts[i]
+		var tLevel = resp.TaxLevel{Level: tConst.Level}
+		if iNet > float64(tConst.Lower) {
 
-	for i := 0; i < len(taxLevels); i++ {
-		taxLevel := taxLevels[i]
-
-		if iNet > float64(taxLevel.Lower) {
-
-			if iNet > float64(taxLevel.Upper) {
-				taxInLevel := (taxLevel.Upper - taxLevel.Lower) * taxLevel.TaxRate / 100
+			if iNet > float64(tConst.Upper) {
+				taxInLevel := (tConst.Upper - tConst.Lower) * tConst.TaxRate / 100
 				ttax += float64(taxInLevel)
-			} else {
-				diffLower := iNet - float64(taxLevel.Lower)
-				tax := diffLower * float64(taxLevel.TaxRate) / 100
-				ttax += tax
-			}
 
+				tLevel.Tax = float64(taxInLevel)
+			} else {
+				diffLower := iNet - float64(tConst.Lower)
+				tax := diffLower * float64(tConst.TaxRate) / 100
+				ttax += tax
+
+				tLevel.Tax = float64(tax)
+			}
 		}
+		tLevels = append(tLevels, tLevel)
 	}
 
 	if ttax >= ie.Wht {
-		return c.JSON(http.StatusOK, resp.Tax{Tax: ttax - ie.Wht})
+		return c.JSON(http.StatusOK, resp.Tax{Tax: ttax - ie.Wht, TaxLevels: tLevels})
 	}
-	return c.JSON(http.StatusOK, resp.TaxWithRefund{Tax: resp.Tax{0}, TaxRefund: ie.Wht - ttax})
+	return c.JSON(http.StatusOK, resp.TaxWithRefund{Tax: resp.Tax{Tax: 0, TaxLevels: tLevels},
+		TaxRefund: ie.Wht - ttax})
 }

@@ -2,11 +2,6 @@ package tax
 
 import "math"
 
-type TaxLevel struct {
-	Level string  `json:"level"`
-	Tax   float64 `json:"tax"`
-}
-
 type TaxConst struct {
 	Lower   int
 	Upper   int
