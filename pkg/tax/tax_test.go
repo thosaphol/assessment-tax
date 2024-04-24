@@ -220,7 +220,40 @@ func TestTaxCalculationWithWht(t *testing.T) {
 		wantTax any
 	}{
 		{
-			name: "tax 35,000, Withholding 0 when income is 560,000",
+			name: "tax 19,000, wiht 0,allowance 200000, when income is 500,000",
+			ie: req.IncomeExpense{
+				TotalIncome: 500000.0,
+				Wht:         0.0,
+				Allowances: []req.Allowance{
+					{AllowanceType: "donation", Amount: 200000.0},
+				},
+			},
+			wantTax: resp.Tax{Tax: 19000.0},
+		},
+		{
+			name: "tax 22,000, wiht 0,allowance 70,000, when income is 500,000",
+			ie: req.IncomeExpense{
+				TotalIncome: 500000.0,
+				Wht:         0.0,
+				Allowances: []req.Allowance{
+					{AllowanceType: "donation", Amount: 70000.0},
+				},
+			},
+			wantTax: resp.Tax{Tax: 22000.0},
+		},
+		{
+			name: "tax 22,000, wiht 0,allowance 0, when income is 500,000",
+			ie: req.IncomeExpense{
+				TotalIncome: 500000.0,
+				Wht:         0.0,
+				Allowances: []req.Allowance{
+					{AllowanceType: "donation", Amount: 0},
+				},
+			},
+			wantTax: resp.Tax{Tax: 29000.0},
+		},
+		{
+			name: "tax 35,000, wiht 0 when income is 560,000",
 			ie: req.IncomeExpense{
 				TotalIncome: 560000,
 				Wht:         0.0,
@@ -228,7 +261,7 @@ func TestTaxCalculationWithWht(t *testing.T) {
 			wantTax: resp.Tax{Tax: 35000},
 		},
 		{
-			name: "tax 23,000, Withholding 12,000 when income is 560,000",
+			name: "tax 23,000, wiht 12,000 when income is 560,000",
 			ie: req.IncomeExpense{
 				TotalIncome: 560000,
 				Wht:         12000.0,
@@ -236,12 +269,12 @@ func TestTaxCalculationWithWht(t *testing.T) {
 			wantTax: resp.Tax{Tax: 23000},
 		},
 		{
-			name: "tax 0, Withholding 40,000 when income is 560,000",
+			name: "tax 0, wiht 40,000 when income is 560,000",
 			ie: req.IncomeExpense{
 				TotalIncome: 560000,
 				Wht:         40000.0,
 			},
-			wantTax: resp.TaxWithRefund{Tax: resp.Tax{0}, TaxRefund: 5000},
+			wantTax: resp.TaxWithRefund{Tax: resp.Tax{Tax: 0}, TaxRefund: 5000},
 		},
 	}
 

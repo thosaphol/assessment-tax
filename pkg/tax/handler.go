@@ -1,6 +1,7 @@
 package tax
 
 import (
+	"math"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -37,11 +38,18 @@ func (h *Handler) Calculation(c echo.Context) error {
 
 	var taxLevels = GetTaxConsts()
 
+	alwTotal := 0.0
+	for _, alw := range ie.Allowances {
+		alwTotal += alw.Amount
+	}
+	alwTotal = math.Min(alwTotal, 100000.0)
+	iNet := ie.TotalIncome - 60000
+	iNet -= alwTotal
+
 	ttax := 0.0
 
 	for i := 0; i < len(taxLevels); i++ {
 		taxLevel := taxLevels[i]
-		iNet := ie.TotalIncome - 60000
 
 		if iNet > float64(taxLevel.Lower) {
 
