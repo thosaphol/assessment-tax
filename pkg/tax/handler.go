@@ -29,6 +29,9 @@ func (h *Handler) Calculation(c echo.Context) error {
 	}
 
 	for _, alw := range ie.Allowances {
+		if alw.Amount < 0 {
+			return c.JSON(http.StatusBadRequest, Err{Message: "Amount allowance must greater than 0."})
+		}
 		switch alw.AllowanceType {
 		case "donation":
 			continue

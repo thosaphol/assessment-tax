@@ -21,6 +21,26 @@ func TestIncomeExpenseValidation(t *testing.T) {
 		wantBody any
 	}{
 		{
+			name: "given amount allowance is less than 0 to calculate tax should return code 400 and message",
+			ie: req.IncomeExpense{
+				Allowances: []req.Allowance{
+					{AllowanceType: "donation", Amount: -1},
+				},
+			},
+			wantCode: http.StatusBadRequest,
+			wantBody: Err{Message: "Amount allowance must greater than 0."},
+		},
+		{
+			name: "given amount allowance is 0 to calculate tax should return code 200",
+			ie: req.IncomeExpense{
+				Allowances: []req.Allowance{
+					{AllowanceType: "donation", Amount: 0},
+				},
+			},
+			wantCode: http.StatusOK,
+		},
+
+		{
 			name: "given income has allowance type is '' to calculate tax should return code 400",
 			ie: req.IncomeExpense{
 				Allowances: []req.Allowance{
