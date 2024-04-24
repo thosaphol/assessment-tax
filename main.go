@@ -28,9 +28,7 @@ func main() {
 	}
 
 	e := echo.New()
-	e.GET("/", func(c echo.Context) error {
-		return c.String(http.StatusOK, "Hello, Go Bootcamp!")
-	})
+	e.GET("tax/calculations", h.Calculation)
 
 	//
 	// graceful shutdown
