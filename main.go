@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/thosaphol/assessment-tax/pkg/tax"
 )
 
 var (
@@ -20,17 +21,17 @@ var (
 
 func main() {
 
-	var port = os.Getenv(ENV_PORT)
+	var port = "8080"
 	_, err := strconv.Atoi(port)
 	if err != nil {
 		log.Fatal("PORT Variable is not an integer.")
 		return
 	}
 
+	h := tax.New()
+
 	e := echo.New()
-	e.GET("/", func(c echo.Context) error {
-		return c.String(http.StatusOK, "Hello, Go Bootcamp!")
-	})
+	e.POST("tax/calculations", h.Calculation)
 
 	//
 	// graceful shutdown
