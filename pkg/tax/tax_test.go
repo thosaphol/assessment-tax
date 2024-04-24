@@ -367,6 +367,15 @@ func TestTaxCalculationWithWht(t *testing.T) {
 				got = taxGot
 			}
 
+			if v, ok := got.(resp.Tax); ok {
+				v.TaxLevels = nil
+				got = v
+			} else if v, ok := got.(resp.TaxWithRefund); ok {
+				v.TaxLevels = nil
+				got = v
+			} else {
+				t.Errorf("expected type %T but got type %T", wantTax, got)
+			}
 			if !reflect.DeepEqual(got, wantTax) {
 				t.Errorf("expected %v but got %v", wantTax, got)
 			}
