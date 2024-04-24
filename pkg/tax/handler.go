@@ -28,6 +28,15 @@ func (h *Handler) Calculation(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, Err{err.Error()})
 	}
 
+	for _, alw := range ie.Allowances {
+		switch alw.AllowanceType {
+		case "donation":
+			continue
+		default:
+			return c.JSON(http.StatusBadRequest, Err{Message: "AllowanceType is 'donation' only"})
+		}
+	}
+
 	if ie.TotalIncome < 0 {
 		return c.JSON(http.StatusBadRequest, Err{"TotalIncome must have a starting value of 0."})
 	}
