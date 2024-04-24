@@ -3,6 +3,7 @@ package tax
 import (
 	"net/http"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/thosaphol/assessment-tax/pkg/request"
 	"github.com/thosaphol/assessment-tax/pkg/response"
@@ -22,7 +23,20 @@ func New() *Handler {
 func (h *Handler) Calculation(c echo.Context) error {
 
 	var ie request.IncomeExpense
-	_ = c.Bind(&ie)
+	err := c.Bind(&ie)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, Err{err.Error()})
+	}
+
+	validate := validator.New()
+	err = validate.Struct(ie)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, Err{err.Error()})
+	}
+
+	if ie.TotalIncome < 0 {
+		return c.JSON(http.StatusBadRequest, Err{"TotalIncome must have a starting value of 0."})
+	}
 
 	var taxLevels = GetTaxConsts()
 

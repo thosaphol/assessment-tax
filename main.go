@@ -21,7 +21,7 @@ var (
 
 func main() {
 
-	var port = os.Getenv(ENV_PORT)
+	var port = "8080"
 	_, err := strconv.Atoi(port)
 	if err != nil {
 		log.Fatal("PORT Variable is not an integer.")
@@ -31,7 +31,7 @@ func main() {
 	h := tax.New()
 
 	e := echo.New()
-	e.GET("tax/calculations", h.Calculation)
+	e.POST("tax/calculations", h.Calculation)
 
 	//
 	// graceful shutdown

@@ -13,6 +13,99 @@ import (
 	"github.com/thosaphol/assessment-tax/pkg/response"
 )
 
+func TestIncomeExpenseValidation(t *testing.T) {
+	tt := []struct {
+		name     string
+		ie       any
+		wantCode int
+		wantBody any
+	}{
+		{
+			name: "given income less than 0 to calculate tax should return 400 and message",
+			ie: request.IncomeExpense{
+				TotalIncome: -1,
+				Wht:         0.0,
+			},
+			wantCode: http.StatusBadRequest,
+			wantBody: Err{Message: "TotalIncome must have a starting value of 0."},
+		},
+		{
+			name: "given income than 0 to calculate tax should return 200",
+			ie: request.IncomeExpense{
+				TotalIncome: 1,
+				Wht:         0.0,
+			},
+			wantCode: http.StatusOK,
+		},
+		{
+			name:     "given request isn't IncomeExpense type to calculate tax should return 400",
+			ie:       response.Tax{},
+			wantCode: http.StatusBadRequest,
+		},
+	}
+
+	for _, tCase := range tt {
+		t.Run(tCase.name, func(t *testing.T) {
+			bytesObj, _ := json.Marshal(tCase.ie)
+
+			req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(bytesObj)))
+			req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+			rec := httptest.NewRecorder()
+
+			e := echo.New()
+			c := e.NewContext(req, rec)
+			c.SetPath("/tax/calculations")
+
+			h := New()
+
+			var wantCode = tCase.wantCode
+			var wantBody = tCase.wantBody
+
+			h.Calculation(c)
+			var gotCode = rec.Code
+			var gotBody Err
+			gotJson := rec.Body.Bytes()
+			if err := json.Unmarshal(gotJson, &gotBody); err != nil {
+				t.Errorf("unable to unmarshal json: %v", err)
+			}
+
+			if gotCode != wantCode {
+				t.Errorf("expected code %v but got code %v", wantCode, gotCode)
+			}
+			if wantBody != nil && !reflect.DeepEqual(gotBody, wantBody) {
+				t.Errorf("expected %v but got %v", wantBody, gotBody)
+			}
+		})
+	}
+
+	// t.Run("given income less than 0 to calculate tax should return 400", func(t *testing.T) {
+	// 	bytesObj, _ := json.Marshal(request.IncomeExpense{
+	// 		TotalIncome: -1,
+	// 		Wht:         0.0,
+	// 	})
+
+	// 	req := httptest.NewRequest(http.MethodGet, "/", strings.NewReader(string(bytesObj)))
+	// 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	// 	rec := httptest.NewRecorder()
+
+	// 	e := echo.New()
+	// 	c := e.NewContext(req, rec)
+	// 	c.SetPath("/tax/calculations")
+
+	// 	h := New()
+
+	// 	var wantCode = http.StatusBadRequest
+
+	// 	h.Calculation(c)
+	// 	var gotCode = rec.Code
+
+	// 	if gotCode != wantCode {
+	// 		t.Errorf("expected code %v but got code %v", wantCode, gotCode)
+	// 	}
+
+	// })
+}
+
 func TestTaxCalculation(t *testing.T) {
 	tt := []struct {
 		name string
