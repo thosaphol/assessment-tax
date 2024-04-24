@@ -32,15 +32,36 @@ func TestIncomeExpenseValidation(t *testing.T) {
 		{
 			name: "given income than 0 to calculate tax should return 200",
 			ie: req.IncomeExpense{
-				TotalIncome: 1,
+				TotalIncome: 0,
 				Wht:         0.0,
 			},
 			wantCode: http.StatusOK,
 		},
 		{
-			name:     "given request isn't IncomeExpense type to calculate tax should return 400",
-			ie:       resp.Tax{},
+			name: "given withholding less than 0 to calculate tax should return code 400 and message",
+			ie: req.IncomeExpense{
+				TotalIncome: 0,
+				Wht:         -1.0,
+			},
 			wantCode: http.StatusBadRequest,
+			wantBody: Err{Message: "Wht must be in the range 0 to TotalIncome."},
+		},
+		{
+			name: "given withholding greater than totalIncome to to calculate tax should return code 400 and message",
+			ie: req.IncomeExpense{
+				TotalIncome: 100,
+				Wht:         1000.0,
+			},
+			wantCode: http.StatusBadRequest,
+			wantBody: Err{Message: "Wht must be in the range 0 to TotalIncome."},
+		},
+		{
+			name: "given withholding,income than 0 to calculate tax should return code 200",
+			ie: req.IncomeExpense{
+				TotalIncome: 0,
+				Wht:         0,
+			},
+			wantCode: http.StatusOK,
 		},
 	}
 
