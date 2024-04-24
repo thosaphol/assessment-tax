@@ -3,16 +3,30 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
 	"github.com/labstack/echo/v4"
 )
 
+var (
+	ENV_PORT = "PORT"
+)
+
 func main() {
+
+	var port = os.Getenv(ENV_PORT)
+	_, err := strconv.Atoi(port)
+	if err != nil {
+		log.Fatal("PORT Variable is not an integer.")
+		return
+	}
+
 	e := echo.New()
 	e.GET("/", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Hello, Go Bootcamp!")
@@ -24,7 +38,7 @@ func main() {
 
 	// start server in go routine
 	go func() {
-		if err := e.Start(":1323"); err != nil && err != http.ErrServerClosed {
+		if err := e.Start(fmt.Sprintf(":%s", port)); err != nil && err != http.ErrServerClosed {
 			e.Logger.Fatal(err)
 		}
 	}()
