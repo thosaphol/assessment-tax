@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/thosaphol/assessment-tax/pkg/tax"
 )
 
 var (
@@ -26,6 +27,8 @@ func main() {
 		log.Fatal("PORT Variable is not an integer.")
 		return
 	}
+
+	h := tax.New()
 
 	e := echo.New()
 	e.GET("tax/calculations", h.Calculation)
