@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/labstack/echo/v4"
-	"github.com/thosaphol/assessment-tax/pkg/request"
-	"github.com/thosaphol/assessment-tax/pkg/response"
+	req "github.com/thosaphol/assessment-tax/pkg/request"
+	resp "github.com/thosaphol/assessment-tax/pkg/response"
 )
 
 func TestIncomeExpenseValidation(t *testing.T) {
@@ -22,7 +22,7 @@ func TestIncomeExpenseValidation(t *testing.T) {
 	}{
 		{
 			name: "given income less than 0 to calculate tax should return 400 and message",
-			ie: request.IncomeExpense{
+			ie: req.IncomeExpense{
 				TotalIncome: -1,
 				Wht:         0.0,
 			},
@@ -31,7 +31,7 @@ func TestIncomeExpenseValidation(t *testing.T) {
 		},
 		{
 			name: "given income than 0 to calculate tax should return 200",
-			ie: request.IncomeExpense{
+			ie: req.IncomeExpense{
 				TotalIncome: 1,
 				Wht:         0.0,
 			},
@@ -39,7 +39,7 @@ func TestIncomeExpenseValidation(t *testing.T) {
 		},
 		{
 			name:     "given request isn't IncomeExpense type to calculate tax should return 400",
-			ie:       response.Tax{},
+			ie:       resp.Tax{},
 			wantCode: http.StatusBadRequest,
 		},
 	}
@@ -77,44 +77,17 @@ func TestIncomeExpenseValidation(t *testing.T) {
 			}
 		})
 	}
-
-	// t.Run("given income less than 0 to calculate tax should return 400", func(t *testing.T) {
-	// 	bytesObj, _ := json.Marshal(request.IncomeExpense{
-	// 		TotalIncome: -1,
-	// 		Wht:         0.0,
-	// 	})
-
-	// 	req := httptest.NewRequest(http.MethodGet, "/", strings.NewReader(string(bytesObj)))
-	// 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	// 	rec := httptest.NewRecorder()
-
-	// 	e := echo.New()
-	// 	c := e.NewContext(req, rec)
-	// 	c.SetPath("/tax/calculations")
-
-	// 	h := New()
-
-	// 	var wantCode = http.StatusBadRequest
-
-	// 	h.Calculation(c)
-	// 	var gotCode = rec.Code
-
-	// 	if gotCode != wantCode {
-	// 		t.Errorf("expected code %v but got code %v", wantCode, gotCode)
-	// 	}
-
-	// })
 }
 
 func TestTaxCalculation(t *testing.T) {
 	tt := []struct {
 		name string
-		ie   request.IncomeExpense
+		ie   req.IncomeExpense
 		want float64
 	}{
 		{
 			name: "Free tax when income is 0",
-			ie: request.IncomeExpense{
+			ie: req.IncomeExpense{
 				TotalIncome: 0.0,
 				Wht:         0.0,
 			},
@@ -122,7 +95,7 @@ func TestTaxCalculation(t *testing.T) {
 		},
 		{
 			name: "Free tax when income is 210,000",
-			ie: request.IncomeExpense{
+			ie: req.IncomeExpense{
 				TotalIncome: 210000,
 				Wht:         0.0,
 			},
@@ -130,7 +103,7 @@ func TestTaxCalculation(t *testing.T) {
 		},
 		{
 			name: "tax 0.1 when income is 210,001",
-			ie: request.IncomeExpense{
+			ie: req.IncomeExpense{
 				TotalIncome: 210001,
 				Wht:         0.0,
 			},
@@ -138,7 +111,7 @@ func TestTaxCalculation(t *testing.T) {
 		},
 		{
 			name: "tax 35,000 when income is 560,000",
-			ie: request.IncomeExpense{
+			ie: req.IncomeExpense{
 				TotalIncome: 560000,
 				Wht:         0.0,
 			},
@@ -146,7 +119,7 @@ func TestTaxCalculation(t *testing.T) {
 		},
 		{
 			name: "tax 35,000.1 when income is 560,001",
-			ie: request.IncomeExpense{
+			ie: req.IncomeExpense{
 				TotalIncome: 560001,
 				Wht:         0.0,
 			},
@@ -154,7 +127,7 @@ func TestTaxCalculation(t *testing.T) {
 		},
 		{
 			name: "tax 110,000 when income is 1,060,000",
-			ie: request.IncomeExpense{
+			ie: req.IncomeExpense{
 				TotalIncome: 1060000,
 				Wht:         0.0,
 			},
@@ -162,7 +135,7 @@ func TestTaxCalculation(t *testing.T) {
 		},
 		{
 			name: "tax 110,000.2 when income is 1,060,001",
-			ie: request.IncomeExpense{
+			ie: req.IncomeExpense{
 				TotalIncome: 1060001,
 				Wht:         0.0,
 			},
@@ -170,7 +143,7 @@ func TestTaxCalculation(t *testing.T) {
 		},
 		{
 			name: "tax 210,000 when income is 2,060,000",
-			ie: request.IncomeExpense{
+			ie: req.IncomeExpense{
 				TotalIncome: 2060000,
 				Wht:         0.0,
 			},
@@ -178,7 +151,7 @@ func TestTaxCalculation(t *testing.T) {
 		},
 		{
 			name: "tax 210,000.35 when income is 2,060,001",
-			ie: request.IncomeExpense{
+			ie: req.IncomeExpense{
 				TotalIncome: 2060001,
 				Wht:         0.0,
 			},
@@ -202,10 +175,10 @@ func TestTaxCalculation(t *testing.T) {
 
 			h := New()
 
-			var want = response.Tax{Tax: tCase.want}
+			var want = resp.Tax{Tax: tCase.want}
 
 			h.Calculation(c)
-			var got response.Tax
+			var got resp.Tax
 			gotJson := rec.Body.Bytes()
 			if err := json.Unmarshal(gotJson, &got); err != nil {
 				t.Errorf("unable to unmarshal json: %v", err)
@@ -213,6 +186,81 @@ func TestTaxCalculation(t *testing.T) {
 
 			if !reflect.DeepEqual(got, want) {
 				t.Errorf("expected %v but got %v", want, got)
+			}
+
+		})
+	}
+}
+
+func TestTaxCalculationWithWht(t *testing.T) {
+	tt := []struct {
+		name    string
+		ie      req.IncomeExpense
+		wantTax any
+	}{
+		{
+			name: "tax 35,000, Withholding 0 when income is 560,000",
+			ie: req.IncomeExpense{
+				TotalIncome: 560000,
+				Wht:         0.0,
+			},
+			wantTax: resp.Tax{Tax: 35000},
+		},
+		{
+			name: "tax 23,000, Withholding 12,000 when income is 560,000",
+			ie: req.IncomeExpense{
+				TotalIncome: 560000,
+				Wht:         12000.0,
+			},
+			wantTax: resp.Tax{Tax: 23000},
+		},
+		{
+			name: "tax 0, Withholding 40,000 when income is 560,000",
+			ie: req.IncomeExpense{
+				TotalIncome: 560000,
+				Wht:         40000.0,
+			},
+			wantTax: resp.TaxWithRefund{Tax: resp.Tax{0}, TaxRefund: 5000},
+		},
+	}
+
+	for _, tCase := range tt {
+
+		t.Run(tCase.name, func(t *testing.T) {
+
+			bytesObj, _ := json.Marshal(tCase.ie)
+
+			req := httptest.NewRequest(http.MethodGet, "/", strings.NewReader(string(bytesObj)))
+			req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+			rec := httptest.NewRecorder()
+
+			e := echo.New()
+			c := e.NewContext(req, rec)
+			c.SetPath("/tax/calculations")
+
+			h := New()
+
+			var wantTax = tCase.wantTax
+
+			h.Calculation(c)
+			var got any
+			gotJson := rec.Body.Bytes()
+			if reflect.TypeOf(wantTax) == reflect.TypeOf(resp.Tax{}) {
+				var taxGot resp.Tax
+				if err := json.Unmarshal(gotJson, &taxGot); err != nil {
+					t.Errorf("unable to unmarshal json: %v", err)
+				}
+				got = taxGot
+			} else if reflect.TypeOf(wantTax) == reflect.TypeOf(resp.TaxWithRefund{}) {
+				var taxGot resp.TaxWithRefund
+				if err := json.Unmarshal(gotJson, &taxGot); err != nil {
+					t.Errorf("unable to unmarshal json: %v", err)
+				}
+				got = taxGot
+			}
+
+			if !reflect.DeepEqual(got, wantTax) {
+				t.Errorf("expected %v but got %v", wantTax, got)
 			}
 
 		})

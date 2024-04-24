@@ -6,7 +6,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/thosaphol/assessment-tax/pkg/request"
-	"github.com/thosaphol/assessment-tax/pkg/response"
+	resp "github.com/thosaphol/assessment-tax/pkg/response"
 )
 
 type Err struct {
@@ -60,5 +60,8 @@ func (h *Handler) Calculation(c echo.Context) error {
 		}
 	}
 
-	return c.JSON(http.StatusOK, response.Tax{Tax: ttax})
+	if ttax >= ie.Wht {
+		return c.JSON(http.StatusOK, resp.Tax{Tax: ttax - ie.Wht})
+	}
+	return c.JSON(http.StatusOK, resp.TaxWithRefund{Tax: resp.Tax{0}, TaxRefund: ie.Wht - ttax})
 }
