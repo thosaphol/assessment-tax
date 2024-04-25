@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	"github.com/thosaphol/assessment-tax/pkg/repo"
 	"github.com/thosaphol/assessment-tax/pkg/request"
 	resp "github.com/thosaphol/assessment-tax/pkg/response"
 )
@@ -14,10 +15,11 @@ type Err struct {
 }
 
 type Handler struct {
+	store repo.Storer
 }
 
-func New() *Handler {
-	return &Handler{}
+func New(db repo.Storer) *Handler {
+	return &Handler{store: db}
 }
 
 func (h *Handler) Calculation(c echo.Context) error {
@@ -48,14 +50,18 @@ func (h *Handler) Calculation(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, Err{"Wht must be in the range 0 to TotalIncome."})
 	}
 
-	var tConsts = GetTaxConsts()
+	personalD, err := h.store.PersonalDeduction()
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, Err{err.Error()})
+	}
 
+	var tConsts = GetTaxConsts()
 	alwTotal := 0.0
 	for _, alw := range ie.Allowances {
 		alwTotal += alw.Amount
 	}
 	alwTotal = math.Min(alwTotal, 100000.0)
-	iNet := ie.TotalIncome - 60000
+	iNet := ie.TotalIncome - personalD
 	iNet -= alwTotal
 
 	var tLevels []resp.TaxLevel

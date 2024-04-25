@@ -24,17 +24,24 @@ func New(db repo.Storer) *Handler {
 }
 
 func (h *Handler) SetDeductionPersonal(c echo.Context) error {
-	var reqD request.Deduction
+	var d request.PersonalDeduction
+
+	var reqD map[string]interface{}
 	err := c.Bind(&reqD)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, response.Err{Message: err.Error()})
 	}
 
-	err = h.store.SetPersonalDeduction(reqD.Amount)
+	err = d.BindFromMap(reqD)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, response.Err{Message: err.Error()})
+		return c.JSON(http.StatusBadRequest, response.Err{Message: err.Error()})
 	}
 
-	var resp = response.PersonalDeduction{PersonalDeduction: reqD.Amount}
+	err = h.store.SetPersonalDeduction(d.Amount)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, response.Err{Message: "Found Internal Server Error"})
+	}
+
+	var resp = response.PersonalDeduction{PersonalDeduction: d.Amount}
 	return c.JSON(http.StatusOK, resp)
 }

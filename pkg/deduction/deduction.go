@@ -1,6 +1,6 @@
 package deduction
 
 type Deduction struct {
-	Personal    int
-	MaxKReceipt int
+	Personal    float64
+	MaxKReceipt float64
 }

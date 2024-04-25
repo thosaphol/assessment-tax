@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/thosaphol/assessment-tax/pkg/deduction"
 	"github.com/thosaphol/assessment-tax/pkg/repo/postgres"
 	"github.com/thosaphol/assessment-tax/pkg/tax"
 )
@@ -31,16 +32,18 @@ func main() {
 		return
 	}
 
-	_, err = postgres.New(connString)
+	p, err := postgres.New(connString)
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
 
-	h := tax.New()
+	hd := deduction.New(p)
+	h := tax.New(p)
 
 	e := echo.New()
 	e.POST("tax/calculations", h.Calculation)
+	e.POST("admin/deductions/personal", hd.SetDeductionPersonal)
 
 	//
 	// graceful shutdown

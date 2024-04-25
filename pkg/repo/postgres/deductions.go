@@ -42,19 +42,19 @@ func (p *Postgres) SetPersonalDeduction(amount float64) error {
 	return nil
 }
 
-// func (p *Postgres) Deduction() (*deduction.Deduction, error) {
-// 	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
-// 	defer cancel()
+func (p *Postgres) PersonalDeduction() (float64, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	defer cancel()
 
-// 	row := p.Db.QueryRowContext(ctx, "SELECT personal,maximum_k_receipt FROM deductions")
+	row := p.Db.QueryRowContext(ctx, "SELECT personal,maximum_k_receipt FROM deductions")
 
-// 	var d Deduction
-// 	err := row.Scan(&d.Personal,
-// 		&d.MaxKReceipt)
+	var d Deduction
+	err := row.Scan(&d.Personal,
+		&d.MaxKReceipt)
 
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	if err != nil {
+		return 0, err
+	}
 
-// 	return &deduction.Deduction{Personal: d.Personal, MaxKReceipt: d.MaxKReceipt}, nil
-// }
+	return d.Personal, nil
+}
