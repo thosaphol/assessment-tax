@@ -12,19 +12,28 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/thosaphol/assessment-tax/pkg/repo/postgres"
 	"github.com/thosaphol/assessment-tax/pkg/tax"
 )
 
 var (
-	ENV_PORT = "PORT"
+	ENV_PORT         = "PORT"
+	ENV_DATABASE_URL = "DATABASE_URL"
 )
 
 func main() {
 
-	var port = "8080"
+	var port = os.Getenv(ENV_PORT)
+	var connString = os.Getenv(ENV_DATABASE_URL)
 	_, err := strconv.Atoi(port)
 	if err != nil {
 		log.Fatal("PORT Variable is not an integer.")
+		return
+	}
+
+	_, err = postgres.New(connString)
+	if err != nil {
+		log.Fatal(err)
 		return
 	}
 
