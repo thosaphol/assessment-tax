@@ -31,8 +31,16 @@ func (stubStore StubStore) PersonalDeduction() (float64, error) {
 	return stubStore.deduction.Personal, stubStore.err
 }
 
+func (stubStore StubStore) SetKReceiptDeduction(amount float64) error {
+	return stubStore.err
+}
+
+func (stubStore StubStore) KReceiptDeduction() (float64, error) {
+	return stubStore.deduction.MaxKReceipt, stubStore.err
+}
+
 var stubStore = StubStore{
-	deduction: deduction.Deduction{Personal: 60000},
+	deduction: deduction.Deduction{Personal: 60000, MaxKReceipt: 50000},
 	err:       nil,
 }
 

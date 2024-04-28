@@ -45,3 +45,27 @@ func (h *Handler) SetDeductionPersonal(c echo.Context) error {
 	var resp = response.PersonalDeduction{PersonalDeduction: d.Amount}
 	return c.JSON(http.StatusOK, resp)
 }
+
+func (h *Handler) SetDeductionKReceipt(c echo.Context) error {
+	var k request.KReceiptDeduction
+
+	var reqK map[string]interface{}
+
+	err := c.Bind(&reqK)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, response.Err{Message: err.Error()})
+	}
+
+	err = k.BindFromMap(reqK)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, response.Err{Message: err.Error()})
+	}
+
+	err = h.store.SetKReceiptDeduction(k.Amount)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, response.Err{Message: "Found Internal Server Error"})
+	}
+
+	var resp = response.KReceiptDeduction{KReceipt: k.Amount}
+	return c.JSON(http.StatusOK, resp)
+}
