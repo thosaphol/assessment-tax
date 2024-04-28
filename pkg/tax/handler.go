@@ -102,6 +102,9 @@ func (h *Handler) CalculationCSV(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, Err{err.Error()})
 	}
+	if ext := utils.GetFileExt(file.Filename); ext != ".csv" {
+		return c.JSON(http.StatusBadRequest, Err{"File extension must is .csv"})
+	}
 	src, err := file.Open()
 	if err != nil {
 		return err
@@ -119,6 +122,14 @@ func (h *Handler) CalculationCSV(c echo.Context) error {
 	if !s {
 		_, err = reader.GetLine()
 		return c.JSON(http.StatusInternalServerError, Err{err.Error()})
+	}
+
+	hRecord, _ := reader.GetLine()
+	if len(hRecord) != 3 {
+		return c.JSON(http.StatusInternalServerError, Err{"Header of content is 'totalIncome,wht,donation' only"})
+	}
+	if "totalIncome" != hRecord[0] || "wht" != hRecord[1] || "donation" != hRecord[2] {
+		return c.JSON(http.StatusInternalServerError, Err{"Header of content is 'totalIncome,wht,donation' only"})
 	}
 
 	personalD, err := h.store.PersonalDeduction()

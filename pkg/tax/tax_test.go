@@ -594,7 +594,7 @@ func TestTaxCalculationCsv(t *testing.T) {
 		{
 			name:    "calculate tax is correct when attach correct CSV file",
 			csvPath: "./csv_src/tax_csv.csv",
-			csvName: "tax,csv",
+			csvName: "tax.csv",
 			want: resp.Taxes{
 				Taxes: []resp.TaxWithIncome{
 					{TotalIncome: 500000, Tax: 29000, TaxRefund: 0},
