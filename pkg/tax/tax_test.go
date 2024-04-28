@@ -9,9 +9,28 @@ import (
 	"testing"
 
 	"github.com/labstack/echo/v4"
+	"github.com/thosaphol/assessment-tax/pkg/deduction"
 	req "github.com/thosaphol/assessment-tax/pkg/request"
 	resp "github.com/thosaphol/assessment-tax/pkg/response"
 )
+
+type StubStore struct {
+	deduction deduction.Deduction
+	err       error
+}
+
+// Wallets implements Storer.
+func (stubStore StubStore) SetPersonalDeduction(amount float64) error {
+	return stubStore.err
+}
+func (stubStore StubStore) PersonalDeduction() (float64, error) {
+	return stubStore.deduction.Personal, stubStore.err
+}
+
+var stubStore = StubStore{
+	deduction: deduction.Deduction{Personal: 60000},
+	err:       nil,
+}
 
 func TestIncomeExpenseValidation(t *testing.T) {
 	tt := []struct {
@@ -127,7 +146,7 @@ func TestIncomeExpenseValidation(t *testing.T) {
 			c := e.NewContext(req, rec)
 			c.SetPath("/tax/calculations")
 
-			h := New()
+			h := New(stubStore)
 
 			var wantCode = tCase.wantCode
 			var wantBody = tCase.wantBody
@@ -244,7 +263,7 @@ func TestTaxCalculation(t *testing.T) {
 			c := e.NewContext(req, rec)
 			c.SetPath("/tax/calculations")
 
-			h := New()
+			h := New(stubStore)
 
 			var want = resp.Tax{Tax: tCase.want}
 
@@ -346,7 +365,7 @@ func TestTaxCalculationWithWht(t *testing.T) {
 			c := e.NewContext(req, rec)
 			c.SetPath("/tax/calculations")
 
-			h := New()
+			h := New(stubStore)
 
 			var wantTax = tCase.wantTax
 
@@ -541,7 +560,7 @@ func TestTaxCalculationToLevel(t *testing.T) {
 			c := e.NewContext(req, rec)
 			c.SetPath("/tax/calculations")
 
-			h := New()
+			h := New(stubStore)
 
 			var want = tCase.want
 
