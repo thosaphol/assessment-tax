@@ -41,12 +41,12 @@ func (h *Handler) Calculation(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, Err{err.Error()})
 	}
+	maxKReceipt, err := h.store.KReceiptDeduction()
 
-	var tConsts = GetTaxConsts()
-
-	alwTotal := calculateAllowance(ie.Allowances)
+	alwTotal := calculateAllowance(ie.Allowances, maxKReceipt)
 	iNet := calculateIncome(ie.TotalIncome, alwTotal, personalD)
 
+	var tConsts = GetTaxConsts()
 	var tLevels []resp.TaxLevel
 	ttax := 0.0
 	for _, tConst := range tConsts {
@@ -75,8 +75,8 @@ func (h *Handler) Calculation(c echo.Context) error {
 		TaxRefund: ie.Wht - ttax})
 }
 
-func calculateAllowance(alws []request.Allowance) float64 {
-	alwKReceipt := sumKReceipt(alws)
+func calculateAllowance(alws []request.Allowance, maxKReceipt float64) float64 {
+	alwKReceipt := sumKReceipt(alws, maxKReceipt)
 	alwDonate := sumDonation(alws)
 	return alwKReceipt + alwDonate
 }
@@ -222,14 +222,14 @@ func sumDonation(alws []request.Allowance) float64 {
 	alwTotal = getMinDonation(alwTotal)
 	return alwTotal
 }
-func sumKReceipt(alws []request.Allowance) float64 {
+func sumKReceipt(alws []request.Allowance, maxKReceipt float64) float64 {
 	alwTotal := 0.0
 	for _, alw := range alws {
 		if alw.AllowanceType == "k-receipt" {
 			alwTotal += alw.Amount
 		}
 	}
-	alwTotal = math.Min(alwTotal, 50000.0)
+	alwTotal = math.Min(alwTotal, maxKReceipt)
 	return alwTotal
 }
 

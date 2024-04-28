@@ -53,6 +53,7 @@ func main() {
 	g := e.Group("/admin")
 	g.Use(auth.NewBasicAuth(user, pass))
 	g.POST("/deductions/personal", hd.SetDeductionPersonal)
+	g.POST("/deductions/k-receipt", hd.SetDeductionKReceipt)
 
 	//
 	// graceful shutdown
