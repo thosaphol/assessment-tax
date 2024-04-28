@@ -15,7 +15,7 @@ WORKDIR /app
 COPY --from=build /app/tax-api /app/tax-api
 
 ENV PORT=8080
-ENV DATABASE_URL=host=localhost port=5432 user=postgres password=postgres dbname=ktaxes sslmode=disable
+ENV DATABASE_URL="host=host.docker.internal port=5432 user=postgres password=postgres dbname=ktaxes sslmode=disable"
 ENV ADMIN_USERNAME=adminTax
 ENV ADMIN_PASSWORD=admin!
 
