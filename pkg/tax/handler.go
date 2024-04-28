@@ -33,26 +33,10 @@ func (h *Handler) Calculation(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, Err{err.Error()})
 	}
 
-	for _, alw := range ie.Allowances {
-		if alw.Amount < 0 {
-			return c.JSON(http.StatusBadRequest, Err{Message: "Amount allowance must greater than 0."})
-		}
-		switch alw.AllowanceType {
-		case "donation", "k-receipt":
-			continue
-		default:
-			return c.JSON(http.StatusBadRequest, Err{Message: "AllowanceType is 'donation' or 'k-receipt' only"})
-		}
+	err = validateIncomeExpense(ie)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, Err{err.Error()})
 	}
-
-	if ie.TotalIncome < 0 {
-		return c.JSON(http.StatusBadRequest, Err{"TotalIncome must have a starting value of 0."})
-	}
-
-	if ie.Wht < 0 || ie.Wht > ie.TotalIncome {
-		return c.JSON(http.StatusBadRequest, Err{"Wht must be in the range 0 to TotalIncome."})
-	}
-
 	personalD, err := h.store.PersonalDeduction()
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, Err{err.Error()})
@@ -60,39 +44,25 @@ func (h *Handler) Calculation(c echo.Context) error {
 
 	var tConsts = GetTaxConsts()
 
-	alwKReceipt := 0.0
-	alwDonate := 0.0
-	for _, alw := range ie.Allowances {
-		if alw.AllowanceType == "donation" {
-			alwDonate += alw.Amount
-			alwDonate = math.Min(100000.0, alwDonate)
-		} else if alw.AllowanceType == "k-receipt" {
-			alwKReceipt += alw.Amount
-			alwKReceipt = math.Min(50000.0, alwKReceipt)
-		}
-	}
-	alwTotal := alwKReceipt + alwDonate
-	iNet := ie.TotalIncome - personalD
-	iNet -= alwTotal
+	alwTotal := calculateAllowance(ie.Allowances)
+	iNet := calculateIncome(ie.TotalIncome, alwTotal, personalD)
 
 	var tLevels []resp.TaxLevel
 	ttax := 0.0
-	for i := 0; i < len(tConsts); i++ {
-		tConst := tConsts[i]
+	for _, tConst := range tConsts {
 		var tLevel = resp.TaxLevel{Level: tConst.Level}
 		if iNet > float64(tConst.Lower) {
 
-			if iNet > float64(tConst.Upper) {
-				taxInLevel := (tConst.Upper - tConst.Lower) * tConst.TaxRate / 100
-				ttax += float64(taxInLevel)
+			if iNet > tConst.Upper {
+				taxInLevel := calculateTaxLevel(tConst.Upper, tConst)
+				ttax += taxInLevel
 
-				tLevel.Tax = float64(taxInLevel)
+				tLevel.Tax = taxInLevel
 			} else {
-				diffLower := iNet - float64(tConst.Lower)
-				tax := diffLower * float64(tConst.TaxRate) / 100
-				ttax += tax
+				taxInLevel := calculateTaxLevel(iNet, tConst)
+				ttax += taxInLevel
 
-				tLevel.Tax = float64(tax)
+				tLevel.Tax = taxInLevel
 			}
 		}
 		tLevels = append(tLevels, tLevel)
@@ -103,6 +73,62 @@ func (h *Handler) Calculation(c echo.Context) error {
 	}
 	return c.JSON(http.StatusOK, resp.TaxWithRefund{Tax: resp.Tax{Tax: 0, TaxLevels: tLevels},
 		TaxRefund: ie.Wht - ttax})
+}
+
+func calculateAllowance(alws []request.Allowance) float64 {
+	alwKReceipt := sumKReceipt(alws)
+	alwDonate := sumDonation(alws)
+	return alwKReceipt + alwDonate
+}
+
+func validateIncomeExpense(ie request.IncomeExpense) error {
+	err := validateAllowance(ie.Allowances)
+	if err != nil {
+		return err
+	}
+	err = validateIncome(ie.TotalIncome)
+	if err != nil {
+		return err
+	}
+
+	err = validateWht(ie.TotalIncome, ie.Wht)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func validateAllowance(alws []request.Allowance) error {
+	for _, alw := range alws {
+		if alw.Amount < 0 {
+			return errors.New("Amount allowance must greater than 0.")
+		}
+		switch alw.AllowanceType {
+		case "donation", "k-receipt":
+			continue
+		default:
+			return errors.New("AllowanceType is 'donation' or 'k-receipt' only")
+		}
+	}
+	return nil
+}
+
+func validateWht(income, wht float64) error {
+	if wht < 0 || wht > income {
+		return errors.New("Wht must be in the range 0 to TotalIncome.")
+	}
+	return nil
+}
+func validateIncome(income float64) error {
+	if income < 0 {
+		return errors.New("TotalIncome must have a starting value of 0.")
+	}
+	return nil
+}
+
+func calculateTaxLevel(income float64, tConst TaxConst) (taxLevel float64) {
+	taxInLevel := (income - tConst.Lower) * float64(tConst.TaxRate) / 100
+	return float64(taxInLevel)
 }
 
 func (h *Handler) CalculationCSV(c echo.Context) error {
@@ -120,19 +146,16 @@ func (h *Handler) CalculationCSV(c echo.Context) error {
 	defer src.Close()
 
 	reader := utils.NewCsvReader(src)
-
 	s := reader.ReadLine()
 	if !s {
 		_, err = reader.GetLine()
-		return c.JSON(http.StatusInternalServerError, Err{err.Error()})
+		return c.JSON(http.StatusBadRequest, Err{err.Error()})
 	}
 
 	hRecord, _ := reader.GetLine()
-	if len(hRecord) != 3 {
-		return c.JSON(http.StatusInternalServerError, Err{"Header of content is 'totalIncome,wht,donation' only"})
-	}
-	if hRecord[0] != "totalIncome" || hRecord[1] != "wht" || hRecord[2] != "donation" {
-		return c.JSON(http.StatusInternalServerError, Err{"Header of content is 'totalIncome,wht,donation' only"})
+	err = validateHeadCSV(hRecord)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, Err{err.Error()})
 	}
 
 	personalD, err := h.store.PersonalDeduction()
@@ -157,8 +180,9 @@ func (h *Handler) CalculationCSV(c echo.Context) error {
 		if err != nil {
 			return c.JSON(http.StatusBadRequest, Err{err.Error()})
 		}
+		donate = getMinDonation(donate)
 
-		iNet := incomeNet(income, donate, personalD)
+		iNet := calculateIncome(income, donate, personalD)
 		netTax, refund := calculateTaxNet(iNet, wht)
 
 		taxInc = resp.TaxWithIncome{TotalIncome: income, Tax: netTax, TaxRefund: refund}
@@ -170,14 +194,50 @@ func (h *Handler) CalculationCSV(c echo.Context) error {
 	return c.JSON(http.StatusOK, resp.Taxes{Taxes: taxes})
 }
 
-func incomeNet(income, totalAlw, PersonalDed float64) float64 {
+func validateHeadCSV(headers []string) error {
+	if len(headers) != 3 {
+		return errors.New("Header of content is 'totalIncome,wht,donation' only")
+	}
+	if headers[0] != "totalIncome" || headers[1] != "wht" || headers[2] != "donation" {
+		return errors.New("Header of content is 'totalIncome,wht,donation' only")
+	}
+	return nil
+}
+
+func calculateIncome(income, totalAlw, PersonalDed float64) float64 {
 	alwTotal := totalAlw
 
-	alwTotal = math.Min(alwTotal, 100000.0)
 	iNet := income - PersonalDed
 	iNet -= alwTotal
 	return iNet
 }
+
+func sumDonation(alws []request.Allowance) float64 {
+	alwTotal := 0.0
+	for _, alw := range alws {
+		if alw.AllowanceType == "donation" {
+			alwTotal += alw.Amount
+		}
+	}
+	alwTotal = getMinDonation(alwTotal)
+	return alwTotal
+}
+func sumKReceipt(alws []request.Allowance) float64 {
+	alwTotal := 0.0
+	for _, alw := range alws {
+		if alw.AllowanceType == "k-receipt" {
+			alwTotal += alw.Amount
+		}
+	}
+	alwTotal = math.Min(alwTotal, 50000.0)
+	return alwTotal
+}
+
+func getMinDonation(donation float64) float64 {
+	return math.Min(donation, 100000)
+	// return math.Min(donation, 100000000000)
+}
+
 func separateRecord(record []string) (float64, float64, float64, error) {
 	if len(record) != 3 {
 		return 0, 0, 0, errors.New("row has columns not equal to 3.")
@@ -207,8 +267,8 @@ func calculateTaxNet(incomeNet, wht float64) (tax float64, refund float64) {
 		if incomeNet > float64(tConst.Lower) {
 
 			if incomeNet > float64(tConst.Upper) {
-				taxInLevel := (tConst.Upper - tConst.Lower) * tConst.TaxRate / 100
-				ttax += float64(taxInLevel)
+				taxInLevel := (tConst.Upper - tConst.Lower) * float64(tConst.TaxRate) / 100
+				ttax += taxInLevel
 
 			} else {
 				diffLower := incomeNet - float64(tConst.Lower)

@@ -3,8 +3,8 @@ package tax
 import "math"
 
 type TaxConst struct {
-	Lower   int
-	Upper   int
+	Lower   float64
+	Upper   float64
 	TaxRate int
 	Level   string
 }
