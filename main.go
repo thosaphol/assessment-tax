@@ -48,6 +48,7 @@ func main() {
 
 	e := echo.New()
 	e.POST("/tax/calculations", h.Calculation)
+	e.POST("tax/calculations/upload-csv", h.CalculationCSV)
 
 	g := e.Group("/admin")
 	g.Use(auth.NewBasicAuth(user, pass))

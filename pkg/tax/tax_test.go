@@ -1,9 +1,13 @@
 package tax
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -566,6 +570,72 @@ func TestTaxCalculationToLevel(t *testing.T) {
 
 			h.Calculation(c)
 			var got resp.Tax
+			gotJson := rec.Body.Bytes()
+			if err := json.Unmarshal(gotJson, &got); err != nil {
+				t.Errorf("unable to unmarshal json: %v", err)
+			}
+
+			if !reflect.DeepEqual(got, want) {
+				t.Errorf("expected %v but got %v", want, got)
+			}
+
+		})
+	}
+}
+
+func TestTaxCalculationCsv(t *testing.T) {
+
+	tt := []struct {
+		name    string
+		csvPath string
+		csvName string
+		want    resp.Taxes
+	}{
+		{
+			name:    "calculate tax is correct when attach correct CSV file",
+			csvPath: "./csv_src/tax_csv.csv",
+			csvName: "tax.csv",
+			want: resp.Taxes{
+				Taxes: []resp.TaxWithIncome{
+					{TotalIncome: 500000, Tax: 29000, TaxRefund: 0},
+					{TotalIncome: 600000, Tax: 0, TaxRefund: 2000},
+					{TotalIncome: 750000, Tax: 11250, TaxRefund: 0},
+				},
+			},
+		},
+	}
+
+	for _, tCase := range tt {
+
+		t.Run(tCase.name, func(t *testing.T) {
+
+			body := new(bytes.Buffer)
+			writer := multipart.NewWriter(body)
+			part, _ := writer.CreateFormFile("taxFile", tCase.csvName)
+			file, err := os.Open(tCase.csvPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer file.Close()
+			if _, err := io.Copy(part, file); err != nil {
+				t.Fatal(err)
+			}
+			writer.Close()
+
+			req := httptest.NewRequest(http.MethodPost, "/tax/calculations/upload-csv", body)
+			req.Header.Set(echo.HeaderContentType, writer.FormDataContentType())
+			rec := httptest.NewRecorder()
+
+			e := echo.New()
+			c := e.NewContext(req, rec)
+			c.SetPath("/tax/calculations/upload-csv")
+
+			h := New(stubStore)
+
+			var want = tCase.want
+
+			h.CalculationCSV(c)
+			var got resp.Taxes
 			gotJson := rec.Body.Bytes()
 			if err := json.Unmarshal(gotJson, &got); err != nil {
 				t.Errorf("unable to unmarshal json: %v", err)
