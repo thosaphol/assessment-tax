@@ -19,4 +19,6 @@ ENV DATABASE_URL=host=localhost port=5432 user=postgres password=postgres dbname
 ENV ADMIN_USERNAME=adminTax
 ENV ADMIN_PASSWORD=admin!
 
+EXPOSE 8080
+
 CMD ["/app/tax-api"]
