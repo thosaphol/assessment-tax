@@ -71,7 +71,7 @@ func TestIncomeExpenseValidation(t *testing.T) {
 				},
 			},
 			wantCode: http.StatusBadRequest,
-			wantBody: Err{Message: "AllowanceType is 'donation' only"},
+			wantBody: Err{Message: "AllowanceType is 'donation' or 'k-receipt' only"},
 		},
 		{
 			name: "given income has allowance type isn't 'donation' to calculate tax should return code 400",
@@ -81,13 +81,14 @@ func TestIncomeExpenseValidation(t *testing.T) {
 				},
 			},
 			wantCode: http.StatusBadRequest,
-			wantBody: Err{Message: "AllowanceType is 'donation' only"},
+			wantBody: Err{Message: "AllowanceType is 'donation' or 'k-receipt' only"},
 		},
 		{
-			name: "given income has allowance type is 'donation; to calculate tax should return code 400",
+			name: "given income has allowance type is 'donation' to calculate tax should return code 200",
 			ie: req.IncomeExpense{
 				Allowances: []req.Allowance{
 					{AllowanceType: "donation"},
+					{AllowanceType: "k-receipt"},
 				},
 			},
 			wantCode: http.StatusOK,
@@ -545,6 +546,125 @@ func TestTaxCalculationToLevel(t *testing.T) {
 				{Tax: 75000, Level: "500,001-1,000,000"},
 				{Tax: 200000, Level: "1,000,001-2,000,000"},
 				{Tax: 0.35, Level: "2,000,001 ขึ้นไป"},
+			},
+			},
+		},
+		{
+			name: "tax 268,000 when income is 2,000,000, donation is 180,000.0, k-receipt is 65,000.0",
+			ie: req.IncomeExpense{
+				TotalIncome: 2000000,
+				Wht:         0.0,
+				Allowances: []req.Allowance{
+					{AllowanceType: "donation", Amount: 180000.0},
+					{AllowanceType: "k-receipt", Amount: 65000.0},
+				},
+			},
+			want: resp.Tax{Tax: 268000, TaxLevels: []resp.TaxLevel{
+				{Tax: 0, Level: "0-150,000"},
+				{Tax: 35000, Level: "150,001-500,000"},
+				{Tax: 75000, Level: "500,001-1,000,000"},
+				{Tax: 158000, Level: "1,000,001-2,000,000"},
+				{Tax: 0, Level: "2,000,001 ขึ้นไป"},
+			},
+			},
+		},
+
+		{
+			name: "tax 273,000 when income is 2,000,000, donation is 80,000, k-receipt is 45,000",
+			ie: req.IncomeExpense{
+				TotalIncome: 2000000,
+				Wht:         0.0,
+				Allowances: []req.Allowance{
+					{AllowanceType: "donation", Amount: 80000.0},
+					{AllowanceType: "k-receipt", Amount: 45000.0},
+				},
+			},
+			want: resp.Tax{Tax: 273000, TaxLevels: []resp.TaxLevel{
+				{Tax: 0, Level: "0-150,000"},
+				{Tax: 35000, Level: "150,001-500,000"},
+				{Tax: 75000, Level: "500,001-1,000,000"},
+				{Tax: 163000, Level: "1,000,001-2,000,000"},
+				{Tax: 0, Level: "2,000,001 ขึ้นไป"},
+			},
+			},
+		},
+	}
+
+	for _, tCase := range tt {
+
+		t.Run(tCase.name, func(t *testing.T) {
+
+			bytesObj, _ := json.Marshal(tCase.ie)
+
+			req := httptest.NewRequest(http.MethodGet, "/", strings.NewReader(string(bytesObj)))
+			req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+			rec := httptest.NewRecorder()
+
+			e := echo.New()
+			c := e.NewContext(req, rec)
+			c.SetPath("/tax/calculations")
+
+			h := New(stubStore)
+
+			var want = tCase.want
+
+			h.Calculation(c)
+			var got resp.Tax
+			gotJson := rec.Body.Bytes()
+			if err := json.Unmarshal(gotJson, &got); err != nil {
+				t.Errorf("unable to unmarshal json: %v", err)
+			}
+
+			if !reflect.DeepEqual(got, want) {
+				t.Errorf("expected %v but got %v", want, got)
+			}
+
+		})
+	}
+}
+
+func TestTaxCalculationWithAllowances(t *testing.T) {
+	tt := []struct {
+		name string
+		ie   req.IncomeExpense
+		want resp.Tax
+	}{
+		{
+			name: "tax 268,000 when income is 2,000,000, donation is 180,000.0, k-receipt is 65,000.0",
+			ie: req.IncomeExpense{
+				TotalIncome: 2000000,
+				Wht:         0.0,
+				Allowances: []req.Allowance{
+					{AllowanceType: "donation", Amount: 180000.0},
+					{AllowanceType: "k-receipt", Amount: 65000.0},
+				},
+			},
+			want: resp.Tax{Tax: 268000, TaxLevels: []resp.TaxLevel{
+				{Tax: 0, Level: "0-150,000"},
+				{Tax: 35000, Level: "150,001-500,000"},
+				{Tax: 75000, Level: "500,001-1,000,000"},
+				{Tax: 158000, Level: "1,000,001-2,000,000"},
+				{Tax: 0, Level: "2,000,001 ขึ้นไป"},
+			},
+			},
+		},
+
+		{
+			name: "tax 273,000 when income is 2,000,000, donation is 80,000, k-receipt is 45,000",
+			ie: req.IncomeExpense{
+				TotalIncome: 2000000,
+				Wht:         0.0,
+				Allowances: []req.Allowance{
+					{AllowanceType: "donation", Amount: 80000.0},
+					{AllowanceType: "k-receipt", Amount: 45000.0},
+				},
+			},
+			want: resp.Tax{Tax: 273000, TaxLevels: []resp.TaxLevel{
+				{Tax: 0, Level: "0-150,000"},
+				{Tax: 35000, Level: "150,001-500,000"},
+				{Tax: 75000, Level: "500,001-1,000,000"},
+				{Tax: 163000, Level: "1,000,001-2,000,000"},
+				{Tax: 0, Level: "2,000,001 ขึ้นไป"},
 			},
 			},
 		},

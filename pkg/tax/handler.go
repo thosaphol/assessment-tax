@@ -38,10 +38,10 @@ func (h *Handler) Calculation(c echo.Context) error {
 			return c.JSON(http.StatusBadRequest, Err{Message: "Amount allowance must greater than 0."})
 		}
 		switch alw.AllowanceType {
-		case "donation":
+		case "donation", "k-receipt":
 			continue
 		default:
-			return c.JSON(http.StatusBadRequest, Err{Message: "AllowanceType is 'donation' only"})
+			return c.JSON(http.StatusBadRequest, Err{Message: "AllowanceType is 'donation' or 'k-receipt' only"})
 		}
 	}
 
@@ -59,11 +59,19 @@ func (h *Handler) Calculation(c echo.Context) error {
 	}
 
 	var tConsts = GetTaxConsts()
-	alwTotal := 0.0
+
+	alwKReceipt := 0.0
+	alwDonate := 0.0
 	for _, alw := range ie.Allowances {
-		alwTotal += alw.Amount
+		if alw.AllowanceType == "donation" {
+			alwDonate += alw.Amount
+			alwDonate = math.Min(100000.0, alwDonate)
+		} else if alw.AllowanceType == "k-receipt" {
+			alwKReceipt += alw.Amount
+			alwKReceipt = math.Min(50000.0, alwKReceipt)
+		}
 	}
-	alwTotal = math.Min(alwTotal, 100000.0)
+	alwTotal := alwKReceipt + alwDonate
 	iNet := ie.TotalIncome - personalD
 	iNet -= alwTotal
 
@@ -112,12 +120,7 @@ func (h *Handler) CalculationCSV(c echo.Context) error {
 	defer src.Close()
 
 	reader := utils.NewCsvReader(src)
-	// records, _ := reader.ReadAll()
-	// if err != nil {
-	// 	return c.JSON(http.StatusBadRequest, Err{err.Error()})
-	// }
 
-	// hRec, err := reader.Read()
 	s := reader.ReadLine()
 	if !s {
 		_, err = reader.GetLine()
@@ -128,7 +131,7 @@ func (h *Handler) CalculationCSV(c echo.Context) error {
 	if len(hRecord) != 3 {
 		return c.JSON(http.StatusInternalServerError, Err{"Header of content is 'totalIncome,wht,donation' only"})
 	}
-	if "totalIncome" != hRecord[0] || "wht" != hRecord[1] || "donation" != hRecord[2] {
+	if hRecord[0] != "totalIncome" || hRecord[1] != "wht" || hRecord[2] != "donation" {
 		return c.JSON(http.StatusInternalServerError, Err{"Header of content is 'totalIncome,wht,donation' only"})
 	}
 
